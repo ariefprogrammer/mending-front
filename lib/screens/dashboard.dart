@@ -5,6 +5,7 @@ import '../models/menu_item.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'auth_page.dart';
 import 'pelanggan/pelanggan_index.dart';
+import 'layanan/layanan_index.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -203,7 +204,14 @@ class DashboardPage extends StatelessWidget {
                         MaterialPageRoute(builder: (context) => const PelangganIndexPage()),
                       ),
                     ),
-                    _buildMenuItem(Icons.room_service_outlined, 'Layanan'),
+                    _buildMenuItem(
+                      Icons.room_service_outlined, 
+                      'Layanan',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const LayananIndexPage()),
+                      ),
+                      ),
                     _buildMenuItem(Icons.group_outlined, 'Karyawan'),
                     _buildMenuItem(Icons.timer_outlined, 'Kehadiran'),
                     _buildMenuItem(Icons.inventory_2_outlined, 'Aset'),
