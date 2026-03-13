@@ -8,6 +8,7 @@ import 'pelanggan/pelanggan_index.dart';
 import 'layanan/layanan_index.dart';
 import 'karyawan/karyawan_index.dart';
 import 'assets/asset_index.dart';
+import 'bahan/bahan_index.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -235,7 +236,14 @@ class DashboardPage extends StatelessWidget {
                         MaterialPageRoute(builder: (context) => const AssetIndexPage()),
                       ),
                     ),
-                    _buildMenuItem(Icons.opacity, 'Bahan'),
+                    _buildMenuItem(
+                      Icons.opacity, 
+                      'Bahan',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const BahanIndexPage()),
+                      ),
+                    ),
                     _buildMenuItem(Icons.account_balance_wallet_outlined, 'Pemasukan'),
                     _buildMenuItem(Icons.payments_outlined, 'Pengeluaran'),
                     _buildMenuItem(Icons.menu_book_outlined, 'Buku Kas'),
