@@ -9,6 +9,7 @@ import 'layanan/layanan_index.dart';
 import 'karyawan/karyawan_index.dart';
 import 'assets/asset_index.dart';
 import 'bahan/bahan_index.dart';
+import 'pemasukan/pemasukan_index.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -244,7 +245,14 @@ class DashboardPage extends StatelessWidget {
                         MaterialPageRoute(builder: (context) => const BahanIndexPage()),
                       ),
                     ),
-                    _buildMenuItem(Icons.account_balance_wallet_outlined, 'Pemasukan'),
+                    _buildMenuItem(
+                      Icons.account_balance_wallet_outlined, 
+                      'Pemasukan',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const PemasukanIndexPage()),
+                      ),
+                    ),
                     _buildMenuItem(Icons.payments_outlined, 'Pengeluaran'),
                     _buildMenuItem(Icons.menu_book_outlined, 'Buku Kas'),
                     _buildMenuItem(Icons.forward_to_inbox_outlined, 'Pesan Masal'),
