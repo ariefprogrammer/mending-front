@@ -11,6 +11,7 @@ import 'assets/asset_index.dart';
 import 'bahan/bahan_index.dart';
 import 'pemasukan/pemasukan_index.dart';
 import 'pengeluaran/pengeluaran_index.dart';
+import 'bukukas/bukukas_index.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -262,7 +263,14 @@ class DashboardPage extends StatelessWidget {
                         MaterialPageRoute(builder: (context) => const PengeluaranIndexPage()),
                       ),
                     ),
-                    _buildMenuItem(Icons.menu_book_outlined, 'Buku Kas'),
+                    _buildMenuItem(
+                      Icons.menu_book_outlined, 
+                      'Buku Kas',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const BukuKasIndexPage()),
+                      ),
+                    ),
                     _buildMenuItem(Icons.forward_to_inbox_outlined, 'Pesan Masal'),
                     _buildMenuItem(Icons.assignment_outlined, 'Formulir'),
                     _buildMenuItem(Icons.storefront_outlined, 'Outlet'),
