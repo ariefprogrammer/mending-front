@@ -14,6 +14,7 @@ import 'pengeluaran/pengeluaran_index.dart';
 import 'bukukas/bukukas_index.dart';
 import 'pesanmasal/pesanmasal_index.dart';
 import 'formulir/formulir_index.dart';
+import 'outlet/outlet_index.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -289,7 +290,14 @@ class DashboardPage extends StatelessWidget {
                         MaterialPageRoute(builder: (context) => const FormulirIndexPage()),
                       ),
                     ),
-                    _buildMenuItem(Icons.storefront_outlined, 'Outlet'),
+                    _buildMenuItem(
+                      Icons.storefront_outlined, 
+                      'Outlet',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const OutletIndexPage()),
+                      ),
+                    ),
                   ],
                 ),
               ),
