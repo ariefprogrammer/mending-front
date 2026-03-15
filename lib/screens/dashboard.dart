@@ -309,13 +309,13 @@ class DashboardPage extends StatelessWidget {
       bottomNavigationBar: const CustomBottomNavBar(currentIndex: 0), 
 
       // Jika Anda ingin floating action button (seperti di gambar desain)
-      floatingActionButton: FloatingActionButton(
-        elevation: 8,
-        backgroundColor: const Color(0xFF1E3A8A),
-        onPressed: () {},
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add, color: Colors.white, size: 35),
-      ),
+      // floatingActionButton: FloatingActionButton(
+      //   elevation: 8,
+      //   backgroundColor: const Color(0xFF1E3A8A),
+      //   onPressed: () {},
+      //   shape: const CircleBorder(),
+      //   child: const Icon(Icons.add, color: Colors.white, size: 35),
+      // ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       
     );

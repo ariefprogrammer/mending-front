@@ -16,7 +16,7 @@ class ProfilePage extends StatelessWidget {
       body: const Center(
         child: Text('Halaman Profil'),
       ),
-      bottomNavigationBar: const CustomBottomNavBar(currentIndex: 3),
+      bottomNavigationBar: const CustomBottomNavBar(currentIndex: 4),
     );
   }
 }

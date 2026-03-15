@@ -16,7 +16,7 @@ class ServicesPage extends StatelessWidget {
       body: const Center(
         child: Text('Halaman Layanan'),
       ),
-      bottomNavigationBar: const CustomBottomNavBar(currentIndex: 2),
+      bottomNavigationBar: const CustomBottomNavBar(currentIndex: 3),
     );
   }
 }

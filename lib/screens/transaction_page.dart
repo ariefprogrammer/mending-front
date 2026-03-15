@@ -109,12 +109,12 @@ class TransactionPage extends StatelessWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: const Color(0xFF1E3A8A),
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
-      ),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: () {},
+      //   backgroundColor: const Color(0xFF1E3A8A),
+      //   shape: const CircleBorder(),
+      //   child: const Icon(Icons.add, color: Colors.white, size: 30),
+      // ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: const CustomBottomNavBar(currentIndex: 1),
     );
