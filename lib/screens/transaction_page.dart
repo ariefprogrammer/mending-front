@@ -15,7 +15,11 @@ class TransactionPage extends StatelessWidget {
         elevation: 0,
         title: const Text(
           'Transaksi', //
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            color: Colors.black, 
+            fontWeight: FontWeight.w400, 
+            fontSize: 18
+          ),
         ),
         actions: [
           IconButton(

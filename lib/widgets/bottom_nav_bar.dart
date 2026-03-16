@@ -64,7 +64,7 @@ class CustomBottomNavBar extends StatelessWidget {
                   _buildNavItem(
                     icon: Icons.inventory_2_outlined,
                     selectedIcon: Icons.inventory_2,
-                    label: 'Layanan',
+                    label: 'Laporan',
                     index: 3,
                     onTap: () => _navigate(context, 3, const ServicesPage()),
                   ),

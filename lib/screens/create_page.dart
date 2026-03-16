@@ -64,7 +64,11 @@ class _CreatePageState extends State<CreatePage> {
         ),
         title: const Text(
           'Buat Pesanan Baru', //
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+            color: Colors.black, 
+            fontWeight: FontWeight.w400, 
+            fontSize: 18
+          ),
         ),
         actions: [
           IconButton(icon: const Icon(Icons.fullscreen, color: Colors.black), onPressed: () {}),
