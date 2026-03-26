@@ -1,6 +1,10 @@
 // lib/screens/auth_page.dart
 import 'package:flutter/material.dart';
-import 'dashboard.dart'; // Import dashboard untuk navigasi
+import 'dashboard.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../core/constants/api_constants.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -28,6 +32,7 @@ class _AuthPageState extends State<AuthPage> with SingleTickerProviderStateMixin
   bool _isRegisterPasswordVisible = false;
   bool _isRegisterConfirmPasswordVisible = false;
   bool _isRegisterChecked = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -340,32 +345,86 @@ class _AuthPageState extends State<AuthPage> with SingleTickerProviderStateMixin
           width: double.infinity,
           height: 55,
           child: ElevatedButton(
-            onPressed: _isLoginChecked ? () {
-              // Handle login
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const DashboardPage()),
-              );
-            } : null,
+            onPressed: (_isLoginChecked && !_isLoading) ? _handleLogin : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1D3878),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text(
-              'Masuk',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: _isLoading 
+              ? const CircularProgressIndicator(color: Colors.white) 
+              : const Text('Masuk', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
         ),
       ],
     );
+  }
+
+  Future<void> _handleLogin() async {
+    if (_loginEmailController.text.isEmpty || _loginPasswordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email dan Password wajib diisi')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await http.post(
+        Uri.parse(ApiConstants.login),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          "email": _loginEmailController.text,
+          "password": _loginPasswordController.text,
+        }),
+      );
+
+      // Debugging: Cetak respon untuk melihat struktur asli dari Laravel
+      print("Response Status: ${response.statusCode}");
+      print("Response Body: ${response.body}");
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        final prefs = await SharedPreferences.getInstance();
+        
+        String token = data['data']?['access_token']?.toString() ?? "";
+        String userName = data['data']?['user']?['name']?.toString() ?? "User";
+
+        print("Token yang akan disimpan: $token");
+
+        await prefs.setString('token', token);
+        await prefs.setString('name', userName);
+        await prefs.setBool('is_logged_in', true);
+
+        if (!mounted) return;
+        
+        // PERBAIKAN NAVIGASI: Gunakan callback kosong untuk memastikan tidak ada return type Null
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const DashboardPage()),
+          (route) => false,
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['message'] ?? 'Email atau Password salah')),
+        );
+      }
+    } catch (e) {
+      print("Error Detail: $e"); // Cek di console log
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Terjadi kesalahan: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   // Register Form
@@ -485,30 +544,77 @@ class _AuthPageState extends State<AuthPage> with SingleTickerProviderStateMixin
           width: double.infinity,
           height: 55,
           child: ElevatedButton(
-            onPressed: _isRegisterChecked ? () {
-              // Handle register
-            } : null,
+            onPressed: (_isRegisterChecked && !_isLoading) ? _handleRegister : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1D3878),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text(
-              'Daftar',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
+            child: _isLoading 
+              ? const SizedBox(
+                  height: 20, 
+                  width: 20, 
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                )
+              : const Text('Daftar', style: TextStyle(fontSize: 16)),
           ),
         ),
       ],
     );
   }
 
+  Future<void> _handleRegister() async {
+      // Validasi sederhana
+      if (_registerPasswordController.text != _registerConfirmPasswordController.text) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Konfirmasi kata sandi tidak cocok')),
+        );
+        return;
+      }
+
+      setState(() => _isLoading = true);
+
+      try {
+        final response = await http.post(
+          Uri.parse(ApiConstants.register),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({
+            "name": _registerNamaController.text,
+            "email": _registerEmailController.text,
+            "password": _registerPasswordController.text,
+            "password_confirmation": _registerConfirmPasswordController.text,
+            "phone": _registerPhoneController.text,
+          }),
+        );
+
+        if (response.statusCode == 201 || response.statusCode == 200) {
+          // Berhasil Register
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Registrasi Berhasil! Silahkan Masuk.')),
+          );
+          _tabController.animateTo(0); // Pindah ke tab login
+        } else {
+          // Gagal (Validasi Laravel biasanya balikkan 422)
+          final errorData = jsonDecode(response.body);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorData['message'] ?? 'Gagal mendaftar')),
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terjadi kesalahan koneksi: $e')),
+        );
+      } finally {
+        setState(() => _isLoading = false);
+      }
+    }
+  
   Widget _buildTextField(
     String label,
     String hint,

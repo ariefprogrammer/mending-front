@@ -15,9 +15,88 @@ import 'bukukas/bukukas_index.dart';
 import 'pesanmasal/pesanmasal_index.dart';
 import 'formulir/formulir_index.dart';
 import 'outlet/outlet_index.dart';
+import '../data/models/outlet_model.dart';
+import '../core/constants/api_constants.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'outlet/outlet_buat_outlet.dart';
 
-class DashboardPage extends StatelessWidget {
+
+class DashboardPage extends StatefulWidget { 
   const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+
+  List<Outlet> _outlets = [];
+  bool _isLoadingOutlets = false;
+  String _activeOutletName = "Pilih Outlet"; 
+  int? _activeOutletId;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchOutlets(); 
+    _loadSavedOutlet();
+  }
+
+  void _keHalamanBuatOutlet() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const BuatOutletPage()),
+    );
+
+    if (result == true) {
+      _fetchOutlets(); // List outlet akan di-refresh otomatis
+      _loadSavedOutlet(); // Nama outlet di header juga di-refresh
+    }
+  }
+
+  Future<void> _loadSavedOutlet() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _activeOutletName = prefs.getString('active_outlet_name') ?? "Pilih Outlet";
+      _activeOutletId = prefs.getInt('active_outlet_id');
+    });
+  }
+
+  Future<void> _fetchOutlets() async {
+    setState(() => _isLoadingOutlets = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? token = prefs.getString('token');
+
+      if (token == null) return;
+
+      final response = await http.get(
+        Uri.parse(ApiConstants.outlets),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token', // Sertakan Token di sini
+        },
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint("Response Data: ${response.body}");
+        final List<dynamic> data = jsonDecode(response.body)['data']; 
+        setState(() {
+          _outlets = data.map((json) => Outlet.fromJson(json)).toList();
+        });
+      } else {
+        print("Gagal mengambil outlet: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Error fetch outlets: $e");
+    } finally {
+      setState(() => _isLoadingOutlets = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,40 +131,35 @@ class DashboardPage extends StatelessWidget {
                           const Icon(Icons.grid_view_rounded, color: Colors.white),
 
                           // 2. Grup Kanan: Teks Outlet + Barcode + Notifikasi
-                          Row(
-                            children: [
-                              // Kolom Teks (Outlet Anda & Bojong Gede)
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end, // Membuat teks rata kanan (align-right)
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Text(
-                                    'Outlet Anda', 
-                                    style: TextStyle(color: Colors.white70, fontSize: 14)
-                                  ),
-                                  Row(
-                                    children: const [
-                                      Text(
-                                        'Bojong Gede', 
-                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 18)
-                                      ),
-                                      Icon(Icons.keyboard_arrow_down, color: Colors.white),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              
-                              const SizedBox(width: 15), // Jarak kecil agar teks tidak benar-benar menempel ke ikon
-        
-                              
-                              // Barcode Scanner
-                              const Icon(Icons.qr_code_scanner, color: Colors.white),
-                              
-                              const SizedBox(width: 10), // Jarak antar ikon
-                              
-                              // Notifikasi
-                              const Icon(Icons.notifications_none, color: Colors.white),
-                            ],
+                          InkWell(
+                            onTap: () => _showOutletPicker(context), // Panggil bottom sheet daftar outlet
+                            child: Row(
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text(
+                                      'Outlet Anda',
+                                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                                    ),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          _activeOutletName,
+                                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 18),
+                                        ),
+                                        Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(width: 15),
+                                const Icon(Icons.qr_code_scanner, color: Colors.white),
+                                const SizedBox(width: 10),
+                                const Icon(Icons.notifications_none, color: Colors.white),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -390,4 +464,97 @@ class DashboardPage extends StatelessWidget {
       ),
     );
   }
+
+  void _showOutletPicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Pilih Outlet",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Divider(),
+              
+              // Loading Indicator jika data masih diambil
+              if (_isLoadingOutlets)
+                const Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: CircularProgressIndicator(),
+                )
+              else if (_outlets.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Text("Belum ada outlet tersedia"),
+                )
+              else
+                // Tampilkan List Outlet dari API
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _outlets.length,
+                    itemBuilder: (context, index) {
+                      final outlet = _outlets[index];
+                      return ListTile(
+                        leading: const Icon(Icons.storefront, color: Color(0xFF1E3A8A)),
+                        title: Text(outlet.name),
+                        subtitle: Text("Kode: ${outlet.outletCode}"),
+                        onTap: () async {
+                          // 1. Simpan ke SharedPreferences
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setInt('active_outlet_id', outlet.id);
+                          await prefs.setString('active_outlet_name', outlet.name);
+                          await prefs.setString('active_outlet_code', outlet.outletCode);
+
+                          // 2. Update State agar UI langsung berubah (Header Dashboard)
+                          setState(() {
+                            _activeOutletName = outlet.name; // Pastikan variabel ini yang dipakai di Header
+                          });
+
+                          // 3. Tutup Bottom Sheet
+                          if (!mounted) return;
+                          Navigator.pop(context);
+
+                          // 4. (Opsional) Panggil ulang data transaksi/ringkasan khusus outlet ini
+                          // _fetchDashboardData(outlet.id); 
+                          
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Outlet aktif: ${outlet.name}')),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+            
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context); // Tutup Bottom Sheet dulu
+                  _keHalamanBuatOutlet(); // 👈 Panggil ini saja, jangan panggil Navigator.push lagi
+                },
+                icon: const Icon(Icons.add),
+                label: const Text("Add Outlet"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E3A8A),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
 }
