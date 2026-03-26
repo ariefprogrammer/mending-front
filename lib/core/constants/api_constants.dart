@@ -9,6 +9,7 @@ class ApiConstants {
 
   // Outlets
   static const String outlets = "$baseUrl/v1/outlets";
+  static String showOutlet(int id) => "$baseUrl/v1/outlets/$id";
 
 }
 

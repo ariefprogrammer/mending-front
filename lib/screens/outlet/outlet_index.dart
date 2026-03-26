@@ -6,20 +6,80 @@ import 'outlet_metode_pembayaran.dart';
 import 'outlet_pemetaan_bukukas.dart';
 import 'outlet_pengaturan_nota.dart';
 import 'outlet_pengaturan_notifikasi.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../../core/constants/api_constants.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class OutletIndexPage extends StatelessWidget {
+class OutletIndexPage extends StatefulWidget {
   const OutletIndexPage({super.key});
+
+  @override
+  State<OutletIndexPage> createState() => _OutletIndexPageState();
+}
+
+class _OutletIndexPageState extends State<OutletIndexPage> {
+  bool _isLoading = true;
+  bool _isDataChanged = false;
+  Map<String, dynamic>? _outletData;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchOutletDetail();
+  }
+
+  Future<void> _fetchOutletDetail() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? token = prefs.getString('token');
+      // Ambil ID outlet yang sedang aktif dari SharedPreferences
+      final int? activeId = prefs.getInt('active_outlet_id');
+
+      if (activeId == null) {
+        throw "Silahkan pilih outlet dulu";
+      }
+
+      final response = await http.get(
+        Uri.parse(ApiConstants.showOutlet(activeId)),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        setState(() {
+          _outletData = result['data'];
+          _isLoading = false;
+        });
+      } else {
+        throw "Gagal memuat data: ${response.statusCode}";
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA), // Background abu-abu sangat muda
+      backgroundColor: const Color(0xFFF8F9FA), 
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E3A8A), // Biru gelap sesuai header
+        backgroundColor: const Color(0xFF1E3A8A),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            // Kirim status perubahan ke Dashboard saat kembali
+            Navigator.pop(context, _isDataChanged); 
+          },
         ),
         title: const Text(
           'Outlet', //
@@ -129,13 +189,13 @@ class OutletIndexPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Mending Laundry Bojong Gede", //
+                Text(
+                  _outletData?['name'] ?? "Nama Outlet",
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  "Jl. Raya Bojong Gede 003/007, Kedung Waringin, Bojong Gede, Kab. Bogor", //
+                Text(
+                  _outletData?['address'] ?? "Alamat belum diatur",
                   style: TextStyle(fontSize: 12, color: Color.fromARGB(255, 67, 67, 67)),
                 ),
                 const SizedBox(height: 8),
@@ -171,9 +231,9 @@ class OutletIndexPage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildContactTile(Icons.phone_outlined, "Nomor Telepon", "0856 9311 4377"), //
+          _buildContactTile(Icons.phone_outlined, "Nomor Telepon", _outletData?['phone'] ?? "-"), //
           const Divider(height: 1),
-          _buildContactTile(Icons.email_outlined, "Email", "mendinglaundry@gmail.com"), //
+          _buildContactTile(Icons.email_outlined, "Email", _outletData?['user']?['email'] ?? "-"), //
         ],
       ),
     );
@@ -227,13 +287,22 @@ class OutletIndexPage extends StatelessWidget {
             leading: Icon(item['icon'] as IconData, color: const Color(0xFF1E3A8A)),
             title: Text(item['label'] as String, style: const TextStyle(fontSize: 14)),
             trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-            onTap: () {
+            onTap: () async {
               // Logika navigasi berdasarkan label menu
               if (item['label'] == 'Ubah Data Outlet') {
-                Navigator.push(
+                // 1. Tambahkan await untuk menunggu halaman ditutup
+                final result = await Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const UbahOutletPage()),
                 );
+
+                // 2. Jika result adalah true, panggil fungsi fetch lagi
+                if (result == true) {
+                  setState(() {
+                    _isDataChanged = true; // Tandai bahwa ada perubahan
+                  });
+                  _fetchOutletDetail(); 
+                }
               } else if (item['label'] == 'Pengaturan Outlet') { 
                 Navigator.push(
                   context,
@@ -321,8 +390,8 @@ class OutletIndexPage extends StatelessWidget {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
-                          // Tambahkan logika hapus di sini
                           Navigator.pop(context);
+                          _deleteOutlet();
                         },
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -340,5 +409,51 @@ class OutletIndexPage extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _deleteOutlet() async {
+    setState(() => _isLoading = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? token = prefs.getString('token');
+      final int? activeId = prefs.getInt('active_outlet_id');
+
+      if (activeId == null) return;
+
+      final response = await http.delete(
+        Uri.parse(ApiConstants.showOutlet(activeId)),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        // 1. KOSONGKAN data di SharedPreferences
+        await prefs.remove('active_outlet_id');
+        await prefs.remove('active_outlet_name');
+        await prefs.remove('active_outlet_code');
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Outlet berhasil dihapus")),
+        );
+
+        // 2. KEMBALI ke Dashboard dengan membawa sinyal 'true'
+        // Ini akan memicu Dashboard untuk menjalankan _fetchOutlets() secara otomatis
+        Navigator.pop(context, true); 
+      } else {
+        final error = jsonDecode(response.body);
+        throw error['message'] ?? "Gagal menghapus outlet";
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 }

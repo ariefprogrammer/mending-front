@@ -56,6 +56,18 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  void _bukaDetailOutlet() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const OutletIndexPage()),
+    );
+
+    if (result == true) {
+      _fetchOutlets(); 
+      _loadSavedOutlet(); 
+    }
+  }
+
   Future<void> _loadSavedOutlet() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -367,10 +379,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     _buildMenuItem(
                       Icons.storefront_outlined, 
                       'Outlet',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const OutletIndexPage()),
-                      ),
+                      onTap: () => _bukaDetailOutlet(),
                     ),
                   ],
                 ),
@@ -539,8 +548,8 @@ class _DashboardPageState extends State<DashboardPage> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.pop(context); // Tutup Bottom Sheet dulu
-                  _keHalamanBuatOutlet(); // 👈 Panggil ini saja, jangan panggil Navigator.push lagi
+                  Navigator.pop(context);
+                  _keHalamanBuatOutlet(); 
                 },
                 icon: const Icon(Icons.add),
                 label: const Text("Add Outlet"),

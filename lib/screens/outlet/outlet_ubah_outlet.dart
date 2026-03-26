@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../../core/constants/api_constants.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class UbahOutletPage extends StatefulWidget {
   const UbahOutletPage({super.key});
@@ -8,16 +12,110 @@ class UbahOutletPage extends StatefulWidget {
 }
 
 class _UbahOutletPageState extends State<UbahOutletPage> {
-  // Controller untuk input text
-  final TextEditingController _idController = TextEditingController(text: "UR-250100004");
+  final TextEditingController _idController = TextEditingController();
   final TextEditingController _namaController = TextEditingController();
-  final TextEditingController _teleponController = TextEditingController(text: "0812938392223");
-  
-  // Nilai default untuk dropdown
-  String? _selectedProvinsi = "Jawa Barat";
-  String? _selectedKota = "Bandung";
-  String? _selectedKelurahan = "Lembang";
-  String? _selectedAlamat = "Jalan jalan 002/001";
+  final TextEditingController _teleponController = TextEditingController();
+  final TextEditingController _alamatController = TextEditingController();
+
+  String? _selectedProvinsi;
+  String? _selectedKota;
+  String? _selectedKecamatan;
+  String? _selectedKelurahan;
+
+  bool _isLoading = true;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchOriginalData();
+  }
+
+  Future<void> _fetchOriginalData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? token = prefs.getString('token');
+      final int? activeId = prefs.getInt('active_outlet_id');
+
+      final response = await http.get(
+        Uri.parse(ApiConstants.showOutlet(activeId!)),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body)['data'];
+        setState(() {
+          _idController.text = data['outlet_code'] ?? "";
+          _namaController.text = data['name'] ?? "";
+          _teleponController.text = data['phone'] ?? "";
+          _alamatController.text = data['address'] ?? "";
+          _selectedProvinsi = data['province'];
+          _selectedKota = data['city'];
+          _selectedKecamatan = data['kecamatan'];
+          _selectedKelurahan = data['kelurahan'];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showSnackBar("Gagal memuat data: $e", isError: true);
+    }
+  }
+
+  Future<void> _updateOutlet() async {
+    setState(() => _isSaving = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? token = prefs.getString('token');
+      final int? activeId = prefs.getInt('active_outlet_id');
+
+      final response = await http.put( // Gunakan PUT untuk update
+        Uri.parse(ApiConstants.showOutlet(activeId!)),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          "name": _namaController.text,
+          "phone": _teleponController.text,
+          "province": _selectedProvinsi,
+          "city": _selectedKota,
+          "kecamatan": _selectedKecamatan,
+          "kelurahan": _selectedKelurahan,
+          "address": _alamatController.text,
+        }),
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        final updatedData = responseData['data'];
+      
+        await prefs.setString('active_outlet_name', updatedData['name'] ?? _namaController.text);
+
+        if (!mounted) return;
+        _showSnackBar(responseData['message'] ?? "Data outlet berhasil diperbarui!");
+        
+        Navigator.pop(context, true);
+      } else {
+        throw responseData['message'] ?? "Gagal memperbarui data";
+      }
+    } catch (e) {
+      _showSnackBar(e.toString(), isError: true);
+    } finally {
+      setState(() => _isSaving = false);
+    }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: isError ? Colors.red : Colors.green),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,12 +199,8 @@ class _UbahOutletPageState extends State<UbahOutletPage> {
               onChanged: (val) => setState(() => _selectedKelurahan = val),
             ),
 
-            _buildLabel("Alamat (Nama jalan/Gang/Komplek)"),
-            _buildDropdown(
-              value: _selectedAlamat,
-              items: ["Jalan jalan 002/001", "Jalan Merdeka No. 10"],
-              onChanged: (val) => setState(() => _selectedAlamat = val),
-            ),
+            _buildLabel("Alamat Lengkap"),
+                _buildTextField(_alamatController, hint: "Nama jalan, RT/RW, No. Rumah"),
 
             // Baris No/Blok, RT, RW
             Row(
@@ -152,7 +246,7 @@ class _UbahOutletPageState extends State<UbahOutletPage> {
         child: SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () {},
+            onPressed: _isSaving ? null : _updateOutlet,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1E3A8A), // Biru Brand
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -203,8 +297,9 @@ class _UbahOutletPageState extends State<UbahOutletPage> {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          value: value,
+          value: items.contains(value) ? value : null,
           isExpanded: true,
+          hint: const Text("Pilih"),
           icon: const Icon(Icons.keyboard_arrow_down),
           items: items.map((String item) {
             return DropdownMenuItem(value: item, child: Text(item));
