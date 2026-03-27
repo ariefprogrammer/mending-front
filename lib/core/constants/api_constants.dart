@@ -19,5 +19,14 @@ class ApiConstants {
   // put and delete
   static String cashBookAction(int outletId, int id) => "$baseUrl/v1/outlets/$outletId/cash-books/$id";
 
+  // kategori pendapatan
+  // GET dan POST
+  static String revenueCategories(int outletId) => "$baseUrl/v1/outlets/$outletId/revenue-categories";
+  // Put dan Delete
+  static String revenueCategoryAction(int outletId, int id) => "$baseUrl/v1/outlets/$outletId/revenue-categories/$id";
+
+  // Kategori Pengeluaran
+  static String costCategories(int outletId) => "$baseUrl/v1/outlets/$outletId/cost-categories"; //store dan get
+  static String costCategoryAction(int outletId, int id) => "$baseUrl/v1/outlets/$outletId/cost-categories/$id"; //put dan delete
 }
 

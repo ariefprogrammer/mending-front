@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../core/constants/api_constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/utils/ui_helpers.dart';
 
 class UbahOutletPage extends StatefulWidget {
   const UbahOutletPage({super.key});
@@ -61,7 +62,7 @@ class _UbahOutletPageState extends State<UbahOutletPage> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      _showSnackBar("Gagal memuat data: $e", isError: true);
+      UiHelpers.showSnackBar(context, "Gagal memuat data: $e", isError: true);
     }
   }
 
@@ -72,7 +73,7 @@ class _UbahOutletPageState extends State<UbahOutletPage> {
       final String? token = prefs.getString('token');
       final int? activeId = prefs.getInt('active_outlet_id');
 
-      final response = await http.put( // Gunakan PUT untuk update
+      final response = await http.put(
         Uri.parse(ApiConstants.showOutlet(activeId!)),
         headers: {
           'Content-Type': 'application/json',
@@ -98,23 +99,23 @@ class _UbahOutletPageState extends State<UbahOutletPage> {
         await prefs.setString('active_outlet_name', updatedData['name'] ?? _namaController.text);
 
         if (!mounted) return;
-        _showSnackBar(responseData['message'] ?? "Data outlet berhasil diperbarui!");
+        
+        UiHelpers.showSnackBar(context, responseData['message'] ?? "Data outlet berhasil diperbarui");
         
         Navigator.pop(context, true);
       } else {
-        throw responseData['message'] ?? "Gagal memperbarui data";
+        UiHelpers.showSnackBar(
+          context, 
+          responseData['message'] ?? "Gagal memperbarui data", 
+          isError: true
+        );
       }
     } catch (e) {
-      _showSnackBar(e.toString(), isError: true);
+      UiHelpers.showSnackBar(context, "Terjadi kesalahan sistem", isError: true);
+      debugPrint("Update Outlet Error: $e");
     } finally {
-      setState(() => _isSaving = false);
+      if (mounted) setState(() => _isSaving = false);
     }
-  }
-
-  void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: isError ? Colors.red : Colors.green),
-    );
   }
 
   @override

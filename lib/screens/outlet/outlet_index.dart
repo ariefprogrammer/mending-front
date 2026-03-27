@@ -264,9 +264,9 @@ class _OutletIndexPageState extends State<OutletIndexPage> {
       {'icon': Icons.store_outlined, 'label': 'Pengaturan Outlet'},
       {'icon': Icons.star_border, 'label': 'Pengaturan Buku Kas'},
       {'icon': Icons.point_of_sale_outlined, 'label': 'Pengaturan Metode Pembayaran'},
-      {'icon': Icons.account_balance_wallet_outlined, 'label': 'Pemetaan Buku Kas'},
-      {'icon': Icons.print_outlined, 'label': 'Pengaturan Nota/Struk'},
-      {'icon': Icons.notifications_none, 'label': 'Pengaturan Notifikasi'},
+      {'icon': Icons.account_balance_wallet_outlined, 'label': 'x Pemetaan Buku Kas'},
+      {'icon': Icons.print_outlined, 'label': 'x Pengaturan Nota/Struk'},
+      {'icon': Icons.notifications_none, 'label': 'x Pengaturan Notifikasi'},
     ];
 
     return Container(

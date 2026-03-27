@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/constants/api_constants.dart';
+import '../../core/utils/ui_helpers.dart';
 
 class MetodePembayaranPage extends StatefulWidget {
   const MetodePembayaranPage({super.key});
@@ -11,15 +16,212 @@ class _MetodePembayaranPageState extends State<MetodePembayaranPage> with Single
   late TabController _tabController;
   final TextEditingController _metodeController = TextEditingController();
 
+  List<dynamic> _revenueCategories = [];
+  List<dynamic> _costCategories = []; // List khusus pengeluaran
+  bool _isLoading = false;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // Listener untuk fetch data otomatis saat tab berpindah
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) return;
+      _refreshCurrentTabData();
+    });
+    _fetchAllData(); 
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _metodeController.dispose();
+    super.dispose();
+  }
+
+  // --- 1. GET DATA (READ) ---
+  Future<void> _fetchAllData() async {
+    await Future.wait([
+      _fetchRevenueCategories(),
+      _fetchCostCategories(),
+    ]);
+  }
+
+  void _refreshCurrentTabData() {
+    if (_tabController.index == 0) {
+      _fetchRevenueCategories();
+    } else {
+      _fetchCostCategories();
+    }
+  }
+
+  Future<void> _fetchRevenueCategories() async {
+    setState(() => _isLoading = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? token = prefs.getString('token');
+      final int? activeId = prefs.getInt('active_outlet_id');
+
+      final response = await http.get(
+        Uri.parse(ApiConstants.revenueCategories(activeId!)),
+        headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        setState(() => _revenueCategories = responseData['data']);
+      }
+    } catch (e) {
+      debugPrint("Error Revenue: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _fetchCostCategories() async {
+    setState(() => _isLoading = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? token = prefs.getString('token');
+      final int? activeId = prefs.getInt('active_outlet_id');
+
+      final response = await http.get(
+        Uri.parse(ApiConstants.costCategories(activeId!)),
+        headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        setState(() => _costCategories = responseData['data']);
+      }
+    } catch (e) {
+      debugPrint("Error Cost: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // --- 2. STORE DATA (CREATE) ---
+  Future<void> _handleStore() async {
+    if (_metodeController.text.isEmpty) return;
+    Navigator.pop(context);
+    setState(() => _isLoading = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? token = prefs.getString('token');
+      final int? activeId = prefs.getInt('active_outlet_id');
+
+      // Pilih URL berdasarkan Tab aktif
+      final url = _tabController.index == 0 
+          ? ApiConstants.revenueCategories(activeId!) 
+          : ApiConstants.costCategories(activeId!);
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({"name": _metodeController.text}),
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        _metodeController.clear();
+        _refreshCurrentTabData();
+        UiHelpers.showSnackBar(context, responseData['message'] ?? "Berhasil disimpan");
+      } else {
+        UiHelpers.showSnackBar(context, responseData['message'] ?? "Gagal menyimpan", isError: true);
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      UiHelpers.showSnackBar(context, "Terjadi kesalahan koneksi", isError: true);
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // --- 3. UPDATE DATA ---
+  Future<void> _handleUpdate(int id) async {
+    if (_metodeController.text.isEmpty) return;
+    Navigator.pop(context);
+    setState(() => _isLoading = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? token = prefs.getString('token');
+      final int? activeId = prefs.getInt('active_outlet_id');
+
+      final url = _tabController.index == 0 
+          ? ApiConstants.revenueCategoryAction(activeId!, id)
+          : ApiConstants.costCategoryAction(activeId!, id);
+
+      final response = await http.put(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({"name": _metodeController.text}),
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        _metodeController.clear();
+        _refreshCurrentTabData();
+        UiHelpers.showSnackBar(context, responseData['message'] ?? "Data diperbarui");
+      } else {
+        UiHelpers.showSnackBar(context, responseData['message'] ?? "Gagal", isError: true);
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      UiHelpers.showSnackBar(context, "Kesalahan sistem", isError: true);
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // --- 4. DELETE DATA ---
+  Future<void> _handleDelete(int id) async {
+    Navigator.pop(context);
+    setState(() => _isLoading = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? token = prefs.getString('token');
+      final int? activeId = prefs.getInt('active_outlet_id');
+
+      final url = _tabController.index == 0 
+          ? ApiConstants.revenueCategoryAction(activeId!, id)
+          : ApiConstants.costCategoryAction(activeId!, id);
+
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: {'Accept': 'application/json', 'Authorization': 'Bearer $token'},
+      );
+
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        _refreshCurrentTabData();
+        UiHelpers.showSnackBar(context, responseData['message'] ?? "Berhasil dihapus");
+      } else {
+        UiHelpers.showSnackBar(context, responseData['message'] ?? "Gagal menghapus", isError: true);
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      UiHelpers.showSnackBar(context, "Terjadi kesalahan", isError: true);
+      setState(() => _isLoading = false);
+    }
   }
 
   // 1. Fungsi Bottom Sheet untuk Tambah/Edit
-  void _showFormBottomSheet({String? initialValue}) {
-    if (initialValue != null) _metodeController.text = initialValue;
+  void _showFormBottomSheet({int? id, String? initialValue}) {
+    _metodeController.text = initialValue ?? "";
+    // if (initialValue != null) _metodeController.text = initialValue;
     
     showModalBottomSheet(
       context: context,
@@ -47,10 +249,7 @@ class _MetodePembayaranPageState extends State<MetodePembayaranPage> with Single
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  _metodeController.clear();
-                  Navigator.pop(context);
-                },
+                onPressed: () => id == null ? _handleStore() : _handleUpdate(id),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1E3A8A),
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -67,7 +266,7 @@ class _MetodePembayaranPageState extends State<MetodePembayaranPage> with Single
   }
 
   // 2. Fungsi Modal Peringatan Hapus
-  void _showDeleteDialog(String title) {
+  void _showDeleteDialog(int id, String title) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -99,7 +298,7 @@ class _MetodePembayaranPageState extends State<MetodePembayaranPage> with Single
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => _handleDelete(id),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1E3A8A),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -132,9 +331,14 @@ class _MetodePembayaranPageState extends State<MetodePembayaranPage> with Single
           tabs: const [Tab(text: "Pendapatan"), Tab(text: "Pengeluaran")],
         ),
       ),
-      body: TabBarView(
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator()) 
+        : TabBarView(
         controller: _tabController,
-        children: [_buildMetodeList(), _buildMetodeList()],
+        children: [
+              _buildMetodeList(_revenueCategories, "pendapatan"),
+              _buildMetodeList(_costCategories, "pengeluaran"),
+            ],
       ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -151,33 +355,26 @@ class _MetodePembayaranPageState extends State<MetodePembayaranPage> with Single
     );
   }
 
-  Widget _buildMetodeList() {
-    final List<String> daftarMetode = ["Tunai", "Transfer", "QRIS"];
+  Widget _buildMetodeList(List<dynamic> data, String type) {
+    if (data.isEmpty) return Center(child: Text("Belum ada data $type"));
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: daftarMetode.length,
+      itemCount: data.length,
       itemBuilder: (context, index) {
+        final item = data[index];
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade200)),
           child: ListTile(
-            title: Text(daftarMetode[index]),
+            title: Text(item['name']),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Tombol Edit
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, color: Colors.orange, size: 20),
-                  onPressed: () => _showFormBottomSheet(initialValue: daftarMetode[index]),
-                ),
-                // Tombol Hapus
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                  onPressed: () => _showDeleteDialog(daftarMetode[index]),
-                ),
+                IconButton(icon: const Icon(Icons.edit_outlined, color: Colors.orange, size: 20), 
+                  onPressed: () => _showFormBottomSheet(id: item['id'], initialValue: item['name'])),
+                IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20), 
+                  onPressed: () => _showDeleteDialog(item['id'], item['name'])),
               ],
             ),
           ),
