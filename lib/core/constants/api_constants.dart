@@ -13,5 +13,11 @@ class ApiConstants {
   static String configureOutlet(int id) => "$baseUrl/v1/outlets/$id/configuration";
   static String getOutletConfiguration(int id) => "$baseUrl/v1/outlets/$id/configuration";
 
+  // buku kas
+  // get dan store
+  static String cashBooks(int outletId) => "$baseUrl/v1/outlets/$outletId/cash-books";
+  // put and delete
+  static String cashBookAction(int outletId, int id) => "$baseUrl/v1/outlets/$outletId/cash-books/$id";
+
 }
 
